@@ -120,7 +120,7 @@ if sys.argv[1] == "-b":
 
 else:
     
-    #TODO Reorgonize this shit
+    #TODO Reorganize this shit
     # l is length, s is single threaded, m is multi threaded, c is specifying what hash to crack, g is gpu accelrated
     flags = "".join(sys.argv).split("-")[1:]
     password_length = 0
