@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+from time import sleep
 from time import time
 from multiprocessing import Pool
 from multiprocessing import cpu_count
@@ -9,21 +10,24 @@ import re
 
 class HashCrack:
 
-    def __init__(self,password_length=0, character_count=32, hash_file=None, hash_type="sha256"):
+    def __init__(self,password_length=0, character_count=64, hash_file=None, hash_type="sha256"):
         self.password_length = password_length
-        self.character_number = character_count
+        self.character_count = character_count
         self.hash_file = hash_file
         self.process_count = cpu_count()
-        self.num_passwords = character_count ** password_length 
+        self.num_passwords = character_count ** password_length
         self.hash_type = hash_type
         
     def password_generator(self,start, end):
+
+        #TODO Speed this up. Far too slow
         for val in range(start, end):
             password = ""
             for i in range(self.password_length):
-                password += chr((0x1f & val) + 65)
-                val >>= 5
-            yield password
+                #TODO Stop yielding unprintable characters
+                password += chr((63 & val)+ 65)
+                val >>= 6 
+            yield password 
 
     def hash_password(self,password):
         hash_types = {
@@ -32,58 +36,71 @@ class HashCrack:
                 "sha256" : hashlib.sha256(bytes(password, "utf-8")).hexdigest(),
                 "sha512": hashlib.sha512(bytes(password, "utf-8")).hexdigest(),
                 }
-        return hash_types[self.hash_type]
+        try:
+            return hash_types[self.hash_type]
+        except:
+            print ("Invalid hash type! Valid hash types: md5, sha1, sha256, sha512")
+            exit(1)
 
     def search_passwords(self,start,end):
         for password in self.password_generator(start, end):
             passwd_hash = self.hash_password(password)
-            # Presumably here the program would do something with the hash
 
     def hash_crack(self,start,end):
-
-        #TODO Handle multiple hashes
+        hashes = []
         try:
             with open(self.hash_file,'r') as f:
-                self.hash_file = f.read()
+                hashes = [str(i.strip()) for i in f.readlines()]
+                for i in hashes:
+                    print (i)
 
         except:
+            #TODO More error conditions
             print ("File not found or improper permissions!")
             exit()
 
-        if end == 0:
-            current_length = 1
-            end = self.character_count * current_length
-            while(True):
-                print ("Current Password Length: {}".format(current_length))
-                for password in self.password_generator(start, end):
-                    passwd_hash = self.hash_password(password)
-                    if passwd_hash == self.hash_file:
-                        return password
-                current_length += 1
-                end = self.character_count * current_length
+        for index,current_hash in enumerate(hashes):
+            if end == 1:
+                self.password_length = 1
+                
 
-        else:
-            for password in self.password_generator(start, end):
-                password_hash = self.hash_password(password)
-                print ("Current Password: {} Hash: {}".format(password, password_hash))
-                print ("HASH_VAL: {}".format(hash_file))
-                if passwd_hash == self.hash_file:
-                    return password
+                #TODO Clean this up
+                end = self.character_count ** self.password_length
+                flag = True
+                while(flag):
+                    for password in self.password_generator(start, end):
+                        password_hash = self.hash_password(password)
+                        if password_hash == current_hash:
+                            print ("LINE #: {}, PASSWORD: {}".format(index, password))
+                            end = 1 
+                            flag = False
+                            yield password
+                            break
+                    if flag != False:
+                        self.password_length += 1
+                        end = self.character_count ** self.password_length
+
+            else:
+                for password in self.password_generator(start, end):
+                    password_hash = self.hash_password(password)
+                    if password_hash == current_hash:
+                        print ("LINE #: {}, PASSWORD: {}".format(index, password))
+                        yield password
+                        break
+
     # Single-threaded hash attempt
     def single_thread(self, mode):
         start_time = time()
-
         if mode == "benchmark":
             self.search_passwords(0, self.num_passwords)
             print("Single-threading done in {} s".format(time() - start_time))
 
         elif mode == "hash_crack":
-            pass_val = self.hash_crack(0, self.num_passwords)
-            if pass_val == None:
-                print ("Password not found with provided password length")
+            for i in self.hash_crack(0, self.num_passwords):
+                pass
 
     # Multi-threaded attempt
-    # TODO Fix this
+    # TODO Fix this for when length is unknown
     def multi_thread(self,mode):
         start_time2 = time()
         pool = Pool(self.process_count)
@@ -114,19 +131,20 @@ class HashCrack:
         pass
 
 if sys.argv[1] == "-b":
-    app = HashCrack(password_length=2)
+    app = HashCrack(password_length=3)
     app.single_thread("benchmark")
     app.multi_thread("benchmark")
 
 else:
     
-    #TODO Reorganize this shit
+    #Reorganize these options
     # l is length, s is single threaded, m is multi threaded, c is specifying what hash to crack, g is gpu accelrated
     flags = "".join(sys.argv).split("-")[1:]
     password_length = 0
     hash_file = None
     hash_type = None
     mode = None
+    hash_type = None
     for i in flags:
         if i[0] == "l" and password_length == 0:
             password_length = int(re.sub(r"\D","",i))
@@ -134,7 +152,7 @@ else:
 
         elif i[0] == "s" and mode == None:
             mode = "single"
-
+           
         elif i[0] == "m" and mode == None:
             mode = "multi"
 
@@ -144,11 +162,14 @@ else:
         elif i[0] == "c" and hash_file == None:
             hash_file = i[1:]
             print ("FILENAME: {}".format(hash_file))
+
+        elif i[0] == "t" and hash_type == None:
+            hash_type = i[1:]
         else:
-            print ("Invalid Flags! Usage: ./HashCrack -l PASSWORD_LENGTH -h HASH_TYPE -c PASSWORD_FILENAME"
+            print ("Invalid Flags! Usage: ./HashCrack -l PASSWORD_LENGTH -t HASH_TYPE -c PASSWORD_FILENAME"
             +"\nOR ./HashCrack -b for benchmark mode ")
 
-    app = HashCrack(password_length=password_length,hash_file=hash_file)
+    app = HashCrack(password_length=password_length,hash_file=hash_file,hash_type=hash_type)
 
     if mode == "single":
         app.single_thread("hash_crack")
