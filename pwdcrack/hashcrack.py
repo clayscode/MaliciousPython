@@ -19,11 +19,14 @@ class HashCrack:
         self.process_count = cpu_count()
         self.hash_type = hash_type
         
-    def password_generator(self,start,end):
-        params = [string.ascii_lowercase]*(self.password_length - 1)
-        for i in range(start,end+1):
-            for j in product(string.ascii_lowercase[i],*params):
-                yield "".join(j)
+    def password_generator(self,start,end,):
+        params = [string.ascii_lowercase]* (self.password_length - 1) 
+        for i in range(start,end):
+            if self.password_length > 1:
+                for j in product(string.ascii_lowercase[i],*params):
+                    yield "".join(j)
+            else:
+                yield string.ascii_lowercase[i]
 
     def hash_password(self,password):
         hash_types = {
@@ -55,25 +58,22 @@ class HashCrack:
     def hash_crack(self,start,end,hashes):
 
         for index,current_hash in enumerate(hashes):
-            if end == 1:
+            if self.password_length == 0:
                 self.password_length = 1
                 
 
                 #TODO Clean this up
-                end = self.character_count ** self.password_length
                 flag = True
                 while(flag):
                     for password in self.password_generator(start, end):
                         password_hash = self.hash_password(password)
                         if password_hash == current_hash:
                             print ("LINE #: {}, PASSWORD: {}".format(index, password))
-                            end = 1 
                             flag = False
                             return password
                             break
                     if flag != False:
                         self.password_length += 1
-                        end = self.character_count ** self.password_length
 
             else:
                 for password in self.password_generator(start, end):
@@ -94,7 +94,6 @@ class HashCrack:
         print("Single-threading done in {} s".format(time() - start_time))
 
     # Multi-threaded attempt
-    # TODO Fix this for when length is unknown
     def multi_thread(self,mode):
         start_time2 = time()
         pool = Pool(self.process_count)
