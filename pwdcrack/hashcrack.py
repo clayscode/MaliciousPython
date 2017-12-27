@@ -103,11 +103,13 @@ class HashCrack:
             for i in range(0, len(string.ascii_lowercase), chunk_size):
                 if i + chunk_size <= len(string.ascii_lowercase):
                     results.append(
-                            pool.apply_async(self.search_passwords, [i, i + chunk_size, hash_val]))
+                            pool.apply_async(self.search_passwords, [i, i + chunk_size]))
                 else: # Edge case for uneven size of last chunk
                     results.append(
                         pool.apply_async(self.search_passwords, [i, len(string.ascii_lowercase)]))
 
+            for result in results:
+                result.get()
         elif mode == "hash_crack":
             hashes = self.file_handler()
             for i in range(0, len(string.ascii_lowercase), chunk_size):
@@ -119,12 +121,12 @@ class HashCrack:
                         pool.apply_async(self.hash_crack, [i, len(string.ascii_lowercase),hashes]))
 
     # Wait for completion
-        for result in results:
-            if result.get() != None:
-                print (result.get())
-                pool.terminate()
-                break
-        pool.join()
+            for result in results:
+                if result.get() != None:
+                    print (result.get())
+                    pool.terminate()
+                    break
+            pool.join()
         print("Multi-threading done in {} s".format(time() - start_time2))
 
     #TODO OpenCL or CUDA accelerated hash cracking
@@ -132,7 +134,7 @@ class HashCrack:
         pass
 
 if sys.argv[1] == "-b":
-    app = HashCrack(password_length=5)
+    app = HashCrack(password_length=4)
     app.single_thread("benchmark")
     app.multi_thread("benchmark")
 
@@ -147,6 +149,8 @@ else:
     mode = None
     hash_type = None
     for i in flags:
+        #TODO Add flags to specify character ranges
+        #TODO Add ability to use dictionaries 
         if i[0] == "l" and password_length == 0:
             password_length = int(re.sub(r"\D","",i))
             print ("LENGTH: {}".format(password_length))
