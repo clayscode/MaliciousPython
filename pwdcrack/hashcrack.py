@@ -10,6 +10,8 @@ import sys
 import hashlib
 import re
 import string
+import signal
+import sys
 
 #TODO Reduce dependencies 
 
@@ -101,15 +103,24 @@ class HashCrack:
 
     # Single-threaded hash attempt
     def single_thread(self, mode):
+        sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGINT, sigint_handler)
+
         start_time = time()
+        try:
 
-        if mode == "benchmark":
-            self.search_passwords(0, len(self.char_set))
+            if mode == "benchmark":
+                self.search_passwords(0, len(self.char_set))
 
-        elif mode == "hash_crack":
-            hashes = self.file_handler()
-            for index,current_hash in enumerate(hashes):
-                self.hash_crack(0, len(self.char_set),current_hash,index)                
+            elif mode == "hash_crack":
+                hashes = self.file_handler()
+                for index,current_hash in enumerate(hashes):
+                    self.hash_crack(0, len(self.char_set),current_hash,index)
+        except KeyboardInterrupt:
+
+            print ("Killing threads")
+            exit(1)
+        
 
         print("Single-threading done in {} s".format(time() - start_time))
 
@@ -118,51 +129,76 @@ class HashCrack:
         start_time2 = time()
         chunk_size = ceil(len(self.char_set) / self.process_count)
         results = []
+
+        # Handle user killing process 
+        sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGINT, sigint_handler)
+
         if mode == "benchmark":
-            pool = Pool(self.process_count)
-            for i in range(0, len(self.char_set), chunk_size):
-                if i + chunk_size <= len(self.char_set):
-                    results.append(
-                            pool.apply_async(self.search_passwords, [i, i + chunk_size]))
-                else: # Edge case for uneven size of last chunk
-                    results.append(
-                        pool.apply_async(self.search_passwords, [i, len(self.char_set)]))
-
-            for result in results:
-                result.get()
-
-        elif mode == "hash_crack":
-           
-            #Load in the hashes from the provided filename 
-            hashes = self.file_handler()
-            for index,current_hash in enumerate(hashes):
+            try:
                 pool = Pool(self.process_count)
-
-                # Callback function that kills the process pool whenever it gets the results
-                def kill_pool(obj):
-                    if obj:
-                        pool.terminate()
-
-                # Spawn different processes to deal with different ranges of starting characters
-                # I.e. one process deals with a-g, the next h-m and so on.
                 for i in range(0, len(self.char_set), chunk_size):
                     if i + chunk_size <= len(self.char_set):
                         results.append(
-                                pool.apply_async(self.hash_crack, [i, i + chunk_size, current_hash,index],callback=kill_pool))
+                                pool.apply_async(self.search_passwords, [i, i + chunk_size]))
                     else: # Edge case for uneven size of last chunk
                         results.append(
-                            pool.apply_async(self.hash_crack, [i, len(self.char_set),current_hash,index],callback=kill_oll))
+                            pool.apply_async(self.search_passwords, [i, len(self.char_set)]))
 
-        # Wait for completion
+                for result in results:
+                    result.get()
+
+            #TODO Fix this
+            except KeyboardInterrupt:
+                print ("Killing processes")
+                pool.terminate()
+
+            else:
                 pool.close()
                 pool.join()
-                results = []
+
+        elif mode == "hash_crack":
+            try: 
+                #Load in the hashes from the provided filename 
+                hashes = self.file_handler()
+                for index,current_hash in enumerate(hashes):
+                    pool = Pool(self.process_count)
+
+                    # Callback function that kills the process pool whenever it gets the results
+                    def kill_pool(obj):
+                        if obj:
+                            pool.terminate()
+
+                    # Spawn different processes to deal with different ranges of starting characters
+                    # I.e. one process deals with a-g, the next h-m and so on.
+                    for i in range(0, len(self.char_set), chunk_size):
+                        if i + chunk_size <= len(self.char_set):
+                            results.append(
+                                    pool.apply_async(self.hash_crack, [i, i + chunk_size, current_hash,index],callback=kill_pool))
+                        else: # Edge case for uneven size of last chunk
+                            results.append(
+                                pool.apply_async(self.hash_crack, [i, len(self.char_set),current_hash,index],callback=kill_oll))
+
+                    pool.close()
+                    pool.join()
+                    results = []
+
+            except KeyboardInterrupt:
+                print ("Killing processes")
+                pool.terminate()
+                pool.close()
+                pool.join()
+
         print("Multi-threading done in {} s".format(time() - start_time2))
 
     #TODO OpenCL or CUDA accelerated hash cracking
     def gpu_accel(mode):
         print ("GPU Accelerated hash cracking not yet implemented")
         return
+    
+    #TODO Allow caching of hashes in sqlite database
+    def store_hashes():
+        pass
 
 if sys.argv[1] == "-b":
     app = HashCrack(password_length=4)
@@ -220,7 +256,8 @@ else:
                        2:string.ascii_letters, 
                        3:string.digits,
                        4:string.ascii_letters+string.digits,
-                       5:string.printable}
+                       # Only go to 94th index because rest are escape characters
+                       5:string.printable[:94]}
             try:
                 char_set = get_set[char_set_num]
             except:
