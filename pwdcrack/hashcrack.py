@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-from time import sleep
-from time import time
 from multiprocessing import Pool
 from multiprocessing import cpu_count
 from multiprocessing import current_process
@@ -11,7 +9,6 @@ import hashlib
 import re
 import string
 import signal
-import sys
 
 #TODO Reduce dependencies 
 
