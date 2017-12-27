@@ -10,6 +10,8 @@ import sys
 import hashlib
 import re
 import string
+#TODO Reduce dependencies 
+
 
 class HashCrack:
 
@@ -20,6 +22,11 @@ class HashCrack:
         self.hash_type = hash_type
         
     def password_generator(self,start,end,):
+        '''
+        itertools.product takes whatever the first character set is and prints all the possible combinations
+         with the character sets that follow.
+         i.e. product('a', 'bcd', 'efg') will produce ('a','b','e'), ('a','b','f') and so on
+         '''
         params = [string.ascii_lowercase]* (self.password_length - 1) 
         for i in range(start,end):
             if self.password_length > 1:
@@ -29,8 +36,11 @@ class HashCrack:
                 yield string.ascii_lowercase[i]
 
     def hash_password(self,password):
+        # How to emulate switch statements in Python
+        
         hash_types = {
                 "md5": hashlib.md5(bytes(password, "utf-8")).hexdigest(),
+                "ntlm": hashlib.new('md4', password.encode('utf-16le')).hexdigest(),
                 "sha1": hashlib.sha1(bytes(password, "utf-8")).hexdigest(),
                 "sha256" : hashlib.sha256(bytes(password, "utf-8")).hexdigest(),
                 "sha512": hashlib.sha512(bytes(password, "utf-8")).hexdigest(),
@@ -57,34 +67,39 @@ class HashCrack:
 
     def hash_crack(self,start,end,hashes):
 
-        for index,current_hash in enumerate(hashes):
-            if self.password_length == 0:
-                self.password_length = 1
-                
+        # Length of zero indicates we don't actually know what the length is
+        # so we start with passwords of length 1
+        if self.password_length == 0:
+            self.password_length = 1
+            
 
-                #TODO Clean this up
-                flag = True
-                while(flag):
-                    for password in self.password_generator(start, end):
-                        password_hash = self.hash_password(password)
-                        if password_hash == current_hash:
-                            print ("LINE #: {}, PASSWORD: {}".format(index, password))
-                            flag = False
-                            return password
-                            break
-                    if flag != False:
-                        self.password_length += 1
-
-            else:
+            #TODO Clean this up
+            flag = True
+            while(flag):
+                # In case we don't know what the length of the secret password is
+                # we keep incrementing it until we find the proper length
                 for password in self.password_generator(start, end):
                     password_hash = self.hash_password(password)
                     if password_hash == current_hash:
                         print ("LINE #: {}, PASSWORD: {}".format(index, password))
+                        flag = False
                         return password
+                        
+                if flag != False:
+                    self.password_length += 1
+
+        else:
+            # If we already know the length
+            for password in self.password_generator(start, end):
+                password_hash = self.hash_password(password)
+                if password_hash == current_hash:
+                    print ("LINE #: {}, PASSWORD: {}".format(index, password))
+                    return password
 
     # Single-threaded hash attempt
     def single_thread(self, mode):
         start_time = time()
+
         if mode == "benchmark":
             print (self.search_passwords(0, len(string.ascii_lowercase)))
 
@@ -111,7 +126,13 @@ class HashCrack:
             for result in results:
                 result.get()
         elif mode == "hash_crack":
+            
+            #Load in the hashes from the provided filename 
             hashes = self.file_handler()
+
+            # Spawn different processes to deal with different ranges of starting characters
+            # I.e. one process deals with a-g, the next h-m and so on.
+
             for i in range(0, len(string.ascii_lowercase), chunk_size):
                 if i + chunk_size <= len(string.ascii_lowercase):
                     results.append(
@@ -124,6 +145,8 @@ class HashCrack:
             for result in results:
                 if result.get() != None:
                     print (result.get())
+                    # If we have something other than a None result, we should terminate
+                    # all the threads immediately. Otherwise we're wasting cpu time
                     pool.terminate()
                     break
             pool.join()
@@ -137,6 +160,10 @@ if sys.argv[1] == "-b":
     app = HashCrack(password_length=4)
     app.single_thread("benchmark")
     app.multi_thread("benchmark")
+
+elif sys.argv[1] == "-h":
+    print ("Usage: ./HashCrack -MODE -l PASSWORD_LENGTH -t HASH_TYPE -c PASSWORD_FILENAME"
+    +"\nOR ./HashCrack -b for benchmark mode ")
 
 else:
     
@@ -171,7 +198,7 @@ else:
         elif i[0] == "t" and hash_type == None:
             hash_type = i[1:]
         else:
-            print ("Invalid Flags! Usage: ./HashCrack -l PASSWORD_LENGTH -t HASH_TYPE -c PASSWORD_FILENAME"
+            print ("Invalid Flags! Usage: ./HashCrack -MODE -l PASSWORD_LENGTH -t HASH_TYPE -c PASSWORD_FILENAME"
             +"\nOR ./HashCrack -b for benchmark mode ")
 
     app = HashCrack(password_length=password_length,hash_file=hash_file,hash_type=hash_type)
