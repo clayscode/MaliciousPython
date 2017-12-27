@@ -3,31 +3,27 @@ from time import sleep
 from time import time
 from multiprocessing import Pool
 from multiprocessing import cpu_count
+from multiprocessing import current_process
 from math import ceil
+from itertools import product
 import sys
 import hashlib
 import re
+import string
 
 class HashCrack:
 
-    def __init__(self,password_length=0, character_count=64, hash_file=None, hash_type="sha256"):
+    def __init__(self,password_length=0, hash_file=None, hash_type="sha256"):
         self.password_length = password_length
-        self.character_count = character_count
         self.hash_file = hash_file
         self.process_count = cpu_count()
-        self.num_passwords = character_count ** password_length
         self.hash_type = hash_type
         
-    def password_generator(self,start, end):
-
-        #TODO Speed this up. Far too slow
-        for val in range(start, end):
-            password = ""
-            for i in range(self.password_length):
-                #TODO Stop yielding unprintable characters
-                password += chr((63 & val)+ 65)
-                val >>= 6 
-            yield password 
+    def password_generator(self,start,end):
+        params = [string.ascii_lowercase]*(self.password_length - 1)
+        for i in range(start,end+1):
+            for j in product(string.ascii_lowercase[i],*params):
+                yield "".join(j)
 
     def hash_password(self,password):
         hash_types = {
@@ -46,18 +42,17 @@ class HashCrack:
         for password in self.password_generator(start, end):
             passwd_hash = self.hash_password(password)
 
-    def hash_crack(self,start,end):
+    def file_handler(self):
         hashes = []
         try:
-            with open(self.hash_file,'r') as f:
+            with open(self.hash_file, 'r') as f:
                 hashes = [str(i.strip()) for i in f.readlines()]
-                for i in hashes:
-                    print (i)
-
+            return hashes
         except:
-            #TODO More error conditions
-            print ("File not found or improper permissions!")
+            print ("FILE IO ERROR")
             exit()
+
+    def hash_crack(self,start,end,hashes):
 
         for index,current_hash in enumerate(hashes):
             if end == 1:
@@ -74,7 +69,7 @@ class HashCrack:
                             print ("LINE #: {}, PASSWORD: {}".format(index, password))
                             end = 1 
                             flag = False
-                            yield password
+                            return password
                             break
                     if flag != False:
                         self.password_length += 1
@@ -85,45 +80,52 @@ class HashCrack:
                     password_hash = self.hash_password(password)
                     if password_hash == current_hash:
                         print ("LINE #: {}, PASSWORD: {}".format(index, password))
-                        yield password
-                        break
+                        return password
 
     # Single-threaded hash attempt
     def single_thread(self, mode):
         start_time = time()
         if mode == "benchmark":
-            self.search_passwords(0, self.num_passwords)
-            print("Single-threading done in {} s".format(time() - start_time))
+            print (self.search_passwords(0, len(string.ascii_lowercase)))
 
         elif mode == "hash_crack":
-            for i in self.hash_crack(0, self.num_passwords):
-                pass
+            print (self.hash_crack(0, len(string.ascii_lowercase),self.file_handler()))                
+
+        print("Single-threading done in {} s".format(time() - start_time))
 
     # Multi-threaded attempt
     # TODO Fix this for when length is unknown
     def multi_thread(self,mode):
         start_time2 = time()
         pool = Pool(self.process_count)
-        chunk_size = ceil(self.num_passwords / self.process_count)
+        chunk_size = ceil(len(string.ascii_lowercase) / self.process_count)
         results = []
-
         if mode == "benchmark":
-            for i in range(0, self.num_passwords, chunk_size):
-                if i + chunk_size <= self.num_passwords:
+            for i in range(0, len(string.ascii_lowercase), chunk_size):
+                if i + chunk_size <= len(string.ascii_lowercase):
                     results.append(
-                            pool.apply_async(self.search_passwords, [i, i + chunk_size]))
+                            pool.apply_async(self.search_passwords, [i, i + chunk_size, hash_val]))
                 else: # Edge case for uneven size of last chunk
                     results.append(
-                        pool.apply_async(self.search_passwords, [i, self.num_passwords]))
+                        pool.apply_async(self.search_passwords, [i, len(string.ascii_lowercase)]))
 
         elif mode == "hash_crack":
-            #TODO Multithreaded hash cracking
-            pass
+            hashes = self.file_handler()
+            for i in range(0, len(string.ascii_lowercase), chunk_size):
+                if i + chunk_size <= len(string.ascii_lowercase):
+                    results.append(
+                            pool.apply_async(self.hash_crack, [i, i + chunk_size, hashes]))
+                else: # Edge case for uneven size of last chunk
+                    results.append(
+                        pool.apply_async(self.hash_crack, [i, len(string.ascii_lowercase),hashes]))
 
     # Wait for completion
         for result in results:
-            result.get()
-
+            if result.get() != None:
+                print (result.get())
+                pool.terminate()
+                break
+        pool.join()
         print("Multi-threading done in {} s".format(time() - start_time2))
 
     #TODO OpenCL or CUDA accelerated hash cracking
@@ -131,7 +133,7 @@ class HashCrack:
         pass
 
 if sys.argv[1] == "-b":
-    app = HashCrack(password_length=3)
+    app = HashCrack(password_length=5)
     app.single_thread("benchmark")
     app.multi_thread("benchmark")
 
