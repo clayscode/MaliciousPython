@@ -10,6 +10,7 @@ import sys
 import hashlib
 import re
 import string
+
 #TODO Reduce dependencies 
 
 
@@ -40,7 +41,7 @@ class HashCrack:
         
         hash_types = {
                 "md5": hashlib.md5(bytes(password, "utf-8")).hexdigest(),
-                "ntlm": hashlib.new('md4', password.encode('utf-16le')).hexdigest(),
+                #"ntlm": hashlib.new('md4', password.encode('utf-16le')).hexdigest(),
                 "sha1": hashlib.sha1(bytes(password, "utf-8")).hexdigest(),
                 "sha256" : hashlib.sha256(bytes(password, "utf-8")).hexdigest(),
                 "sha512": hashlib.sha512(bytes(password, "utf-8")).hexdigest(),
@@ -65,7 +66,7 @@ class HashCrack:
             print ("FILE IO ERROR")
             exit()
 
-    def hash_crack(self,start,end,hashes):
+    def hash_crack(self,start,end,current_hash,index):
 
         # Length of zero indicates we don't actually know what the length is
         # so we start with passwords of length 1
@@ -83,6 +84,7 @@ class HashCrack:
                     if password_hash == current_hash:
                         print ("LINE #: {}, PASSWORD: {}".format(index, password))
                         flag = False
+                        self.password_length = 0
                         return password
                         
                 if flag != False:
@@ -101,20 +103,22 @@ class HashCrack:
         start_time = time()
 
         if mode == "benchmark":
-            print (self.search_passwords(0, len(string.ascii_lowercase)))
+            self.search_passwords(0, len(string.ascii_lowercase))
 
         elif mode == "hash_crack":
-            print (self.hash_crack(0, len(string.ascii_lowercase),self.file_handler()))                
+            hashes = self.file_handler()
+            for index,current_hash in enumerate(hashes):
+                self.hash_crack(0, len(string.ascii_lowercase),current_hash,index)                
 
         print("Single-threading done in {} s".format(time() - start_time))
 
     # Multi-threaded attempt
     def multi_thread(self,mode):
         start_time2 = time()
-        pool = Pool(self.process_count)
         chunk_size = ceil(len(string.ascii_lowercase) / self.process_count)
         results = []
         if mode == "benchmark":
+            pool = Pool(self.process_count)
             for i in range(0, len(string.ascii_lowercase), chunk_size):
                 if i + chunk_size <= len(string.ascii_lowercase):
                     results.append(
@@ -125,31 +129,33 @@ class HashCrack:
 
             for result in results:
                 result.get()
+
         elif mode == "hash_crack":
-            
+           
             #Load in the hashes from the provided filename 
             hashes = self.file_handler()
+            for index,current_hash in enumerate(hashes):
+                pool = Pool(self.process_count)
 
-            # Spawn different processes to deal with different ranges of starting characters
-            # I.e. one process deals with a-g, the next h-m and so on.
+                # Callback function that kills the process pool whenever it gets the results
+                def kill_pool(obj):
+                    if obj:
+                        pool.terminate()
 
-            for i in range(0, len(string.ascii_lowercase), chunk_size):
-                if i + chunk_size <= len(string.ascii_lowercase):
-                    results.append(
-                            pool.apply_async(self.hash_crack, [i, i + chunk_size, hashes]))
-                else: # Edge case for uneven size of last chunk
-                    results.append(
-                        pool.apply_async(self.hash_crack, [i, len(string.ascii_lowercase),hashes]))
+                # Spawn different processes to deal with different ranges of starting characters
+                # I.e. one process deals with a-g, the next h-m and so on.
+                for i in range(0, len(string.ascii_lowercase), chunk_size):
+                    if i + chunk_size <= len(string.ascii_lowercase):
+                        results.append(
+                                pool.apply_async(self.hash_crack, [i, i + chunk_size, current_hash,index],callback=kill_pool))
+                    else: # Edge case for uneven size of last chunk
+                        results.append(
+                            pool.apply_async(self.hash_crack, [i, len(string.ascii_lowercase),current_hash,index],callback=kill_oll))
 
-    # Wait for completion
-            for result in results:
-                if result.get() != None:
-                    print (result.get())
-                    # If we have something other than a None result, we should terminate
-                    # all the threads immediately. Otherwise we're wasting cpu time
-                    pool.terminate()
-                    break
-            pool.join()
+        # Wait for completion
+                pool.close()
+                pool.join()
+                results = []
         print("Multi-threading done in {} s".format(time() - start_time2))
 
     #TODO OpenCL or CUDA accelerated hash cracking
