@@ -16,11 +16,12 @@ import string
 
 class HashCrack:
 
-    def __init__(self,password_length=0, hash_file=None, hash_type="sha256"):
+    def __init__(self,password_length=0, hash_file=None, hash_type="sha256",char_set=string.ascii_lowercase):
         self.password_length = password_length
         self.hash_file = hash_file
         self.process_count = cpu_count()
         self.hash_type = hash_type
+        self.char_set = char_set
         
     def password_generator(self,start,end,):
         '''
@@ -28,13 +29,13 @@ class HashCrack:
          with the character sets that follow.
          i.e. product('a', 'bcd', 'efg') will produce ('a','b','e'), ('a','b','f') and so on
          '''
-        params = [string.ascii_lowercase]* (self.password_length - 1) 
+        params = [self.char_set]* (self.password_length - 1) 
         for i in range(start,end):
             if self.password_length > 1:
-                for j in product(string.ascii_lowercase[i],*params):
+                for j in product(self.char_set[i],*params):
                     yield "".join(j)
             else:
-                yield string.ascii_lowercase[i]
+                yield self.char_set[i]
 
     def hash_password(self,password):
         # How to emulate switch statements in Python
@@ -44,12 +45,12 @@ class HashCrack:
                 "ntlm": hashlib.new('md4', password.encode('utf-16le')).hexdigest(),
                 "sha1": hashlib.sha1(bytes(password, "utf-8")).hexdigest(),
                 "sha256" : hashlib.sha256(bytes(password, "utf-8")).hexdigest(),
-                "sha512": hashlib.sha512(bytes(password, "utf-8")).hexdigest(),
+                "sha512": hashlib.sha512(bytes(password, "utf-8")).hexdigest()
                 }
         try:
             return hash_types[self.hash_type]
         except:
-            print ("Invalid hash type! Valid hash types: md5, sha1, sha256, sha512")
+            print ("Invalid hash type! Valid hash types: md5, ntlm, sha1, sha256, sha512")
             exit(1)
 
     def search_passwords(self,start,end):
@@ -103,29 +104,29 @@ class HashCrack:
         start_time = time()
 
         if mode == "benchmark":
-            self.search_passwords(0, len(string.ascii_lowercase))
+            self.search_passwords(0, len(self.char_set))
 
         elif mode == "hash_crack":
             hashes = self.file_handler()
             for index,current_hash in enumerate(hashes):
-                self.hash_crack(0, len(string.ascii_lowercase),current_hash,index)                
+                self.hash_crack(0, len(self.char_set),current_hash,index)                
 
         print("Single-threading done in {} s".format(time() - start_time))
 
     # Multi-threaded attempt
     def multi_thread(self,mode):
         start_time2 = time()
-        chunk_size = ceil(len(string.ascii_lowercase) / self.process_count)
+        chunk_size = ceil(len(self.char_set) / self.process_count)
         results = []
         if mode == "benchmark":
             pool = Pool(self.process_count)
-            for i in range(0, len(string.ascii_lowercase), chunk_size):
-                if i + chunk_size <= len(string.ascii_lowercase):
+            for i in range(0, len(self.char_set), chunk_size):
+                if i + chunk_size <= len(self.char_set):
                     results.append(
                             pool.apply_async(self.search_passwords, [i, i + chunk_size]))
                 else: # Edge case for uneven size of last chunk
                     results.append(
-                        pool.apply_async(self.search_passwords, [i, len(string.ascii_lowercase)]))
+                        pool.apply_async(self.search_passwords, [i, len(self.char_set)]))
 
             for result in results:
                 result.get()
@@ -144,13 +145,13 @@ class HashCrack:
 
                 # Spawn different processes to deal with different ranges of starting characters
                 # I.e. one process deals with a-g, the next h-m and so on.
-                for i in range(0, len(string.ascii_lowercase), chunk_size):
-                    if i + chunk_size <= len(string.ascii_lowercase):
+                for i in range(0, len(self.char_set), chunk_size):
+                    if i + chunk_size <= len(self.char_set):
                         results.append(
                                 pool.apply_async(self.hash_crack, [i, i + chunk_size, current_hash,index],callback=kill_pool))
                     else: # Edge case for uneven size of last chunk
                         results.append(
-                            pool.apply_async(self.hash_crack, [i, len(string.ascii_lowercase),current_hash,index],callback=kill_oll))
+                            pool.apply_async(self.hash_crack, [i, len(self.char_set),current_hash,index],callback=kill_oll))
 
         # Wait for completion
                 pool.close()
@@ -160,33 +161,39 @@ class HashCrack:
 
     #TODO OpenCL or CUDA accelerated hash cracking
     def gpu_accel(mode):
-        pass
+        print ("GPU Accelerated hash cracking not yet implemented")
+        return
 
 if sys.argv[1] == "-b":
     app = HashCrack(password_length=4)
     app.single_thread("benchmark")
     app.multi_thread("benchmark")
+    #app.gpu_accel("benchmark")
 
 elif sys.argv[1] == "-h":
-    print ("Usage: ./hashcrack -MODE -l PASSWORD_LENGTH -t HASH_TYPE -c PASSWORD_FILENAME"
+    print ("Usage: ./hashcrack -MODE -l PASSWORD_LENGTH -t HASH_TYPE -c CHARACTER_SET -f PASSWORD_FILENAME"
     +"\nor ./hashcrack -b for benchmark mode ")
     print ("-")
     print ("MODES: -m for multi threaded mode, -s for single threaded mode, and -g for GPU accelerated mode")
     print ("-")
     print ("HASH_TYPES: md5, ntlm, sha1, sha256, sha512")
+    print ("-")
+    print ("Character Sets: lowercase(default): 0, uppercase: 1, all_letters: 2, numbers: 3, letters_and_numbers: 4," 
+            +"all_printable_ascii: 5")
 
 else:
     
     #Reorganize these options
-    # l is length, s is single threaded, m is multi threaded, c is specifying what hash to crack, g is gpu accelrated
+    # l is length, s is single threaded, m is multi threaded, f is specifying what hash to crack, g is gpu accelrated
     flags = "".join(sys.argv).split("-")[1:]
     password_length = 0
     hash_file = None
     hash_type = None
     mode = None
     hash_type = None
+    char_set = None
+
     for i in flags:
-        #TODO Add flags to specify character ranges
         #TODO Add ability to use dictionaries 
         if i[0] == "l" and password_length == 0:
             password_length = int(re.sub(r"\D","",i))
@@ -200,15 +207,29 @@ else:
         elif i[0] == "g" and mode == None:
             mode = "gpu"
 
-        elif i[0] == "c" and hash_file == None:
+        elif i[0] == "f" and hash_file == None:
             hash_file = i[1:]
 
         elif i[0] == "t" and hash_type == None:
             hash_type = i[1:]
+
+        elif i[0] == "c" and char_set == None:
+            char_set_num = int(re.sub(r"\D","",i))
+            get_set = {0:string.ascii_lowercase, 
+                       1:string.ascii_uppercase, 
+                       2:string.ascii_letters, 
+                       3:string.digits,
+                       4:string.ascii_letters+string.digits,
+                       5:string.printable}
+            try:
+                char_set = get_set[char_set_num]
+            except:
+                print("Invalid character set. Please see ./hashcrack -h for a list of character sets")
+                exit(1)
         else:
             print ("Invalid Flags! Please type ./hashcrack -h for usage information")
 
-    app = HashCrack(password_length=password_length,hash_file=hash_file,hash_type=hash_type)
+    app = HashCrack(password_length=password_length,hash_file=hash_file,hash_type=hash_type,char_set=char_set)
 
     if mode == "single":
         app.single_thread("hash_crack")
