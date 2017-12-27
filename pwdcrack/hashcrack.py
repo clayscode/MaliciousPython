@@ -41,7 +41,7 @@ class HashCrack:
         
         hash_types = {
                 "md5": hashlib.md5(bytes(password, "utf-8")).hexdigest(),
-                #"ntlm": hashlib.new('md4', password.encode('utf-16le')).hexdigest(),
+                "ntlm": hashlib.new('md4', password.encode('utf-16le')).hexdigest(),
                 "sha1": hashlib.sha1(bytes(password, "utf-8")).hexdigest(),
                 "sha256" : hashlib.sha256(bytes(password, "utf-8")).hexdigest(),
                 "sha512": hashlib.sha512(bytes(password, "utf-8")).hexdigest(),
@@ -168,8 +168,12 @@ if sys.argv[1] == "-b":
     app.multi_thread("benchmark")
 
 elif sys.argv[1] == "-h":
-    print ("Usage: ./HashCrack -MODE -l PASSWORD_LENGTH -t HASH_TYPE -c PASSWORD_FILENAME"
-    +"\nOR ./HashCrack -b for benchmark mode ")
+    print ("Usage: ./hashcrack -MODE -l PASSWORD_LENGTH -t HASH_TYPE -c PASSWORD_FILENAME"
+    +"\nor ./hashcrack -b for benchmark mode ")
+    print ("-")
+    print ("MODES: -m for multi threaded mode, -s for single threaded mode, and -g for GPU accelerated mode")
+    print ("-")
+    print ("HASH_TYPES: md5, ntlm, sha1, sha256, sha512")
 
 else:
     
@@ -186,7 +190,6 @@ else:
         #TODO Add ability to use dictionaries 
         if i[0] == "l" and password_length == 0:
             password_length = int(re.sub(r"\D","",i))
-            print ("LENGTH: {}".format(password_length))
 
         elif i[0] == "s" and mode == None:
             mode = "single"
@@ -199,13 +202,11 @@ else:
 
         elif i[0] == "c" and hash_file == None:
             hash_file = i[1:]
-            print ("FILENAME: {}".format(hash_file))
 
         elif i[0] == "t" and hash_type == None:
             hash_type = i[1:]
         else:
-            print ("Invalid Flags! Usage: ./HashCrack -MODE -l PASSWORD_LENGTH -t HASH_TYPE -c PASSWORD_FILENAME"
-            +"\nOR ./HashCrack -b for benchmark mode ")
+            print ("Invalid Flags! Please type ./hashcrack -h for usage information")
 
     app = HashCrack(password_length=password_length,hash_file=hash_file,hash_type=hash_type)
 
