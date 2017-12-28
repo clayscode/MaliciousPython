@@ -15,7 +15,7 @@ import signal
 
 class HashCrack:
 
-    def __init__(self,password_length=0, hash_file=None, hash_type="sha256",char_set=string.ascii_lowercase):
+    def __init__(self,password_length=0, hash_file=None, hash_type=None ,char_set=string.ascii_lowercase):
         self.password_length = password_length
         self.hash_file = hash_file
         self.process_count = cpu_count()
@@ -36,17 +36,17 @@ class HashCrack:
             else:
                 yield self.char_set[i]
 
-    def hash_password(self,password):
+    def hash_password(self,password, current_hash):
         
-                if self.hash_type == "md5": 
+                if self.hash_type == "md5" or len(current_hash) == 32: 
                     return hashlib.md5(bytes(password, "utf-8")).hexdigest()
                 elif self.hash_type == "ntlm": 
                     return hashlib.new('md4', password.encode('utf-16le')).hexdigest()
-                elif self.hash_type == "sha1": 
+                elif self.hash_type == "sha1" or len(current_hash) == 40: 
                     return hashlib.sha1(bytes(password, "utf-8")).hexdigest()
-                elif self.hash_type == "sha256" : 
+                elif self.hash_type == "sha256" or len(current_hash) == 64: 
                     return hashlib.sha256(bytes(password, "utf-8")).hexdigest()
-                elif self.hash_type == "sha512": 
+                elif self.hash_type == "sha512" or len(current_hash) == 128: 
                     return hashlib.sha512(bytes(password, "utf-8")).hexdigest()
                 else:
                     print ("Invalid hash type! Please see ./hashcrack -h for available hash types")
@@ -80,7 +80,7 @@ class HashCrack:
                 # In case we don't know what the length of the secret password is
                 # we keep incrementing it until we find the proper length
                 for password in self.password_generator(start, end):
-                    password_hash = self.hash_password(password)
+                    password_hash = self.hash_password(password,current_hash)
                     if password_hash == current_hash:
                         print ("LINE #: {}, PASSWORD: {}".format(index, password))
                         flag = False
@@ -93,7 +93,7 @@ class HashCrack:
         else:
             # If we already know the length
             for password in self.password_generator(start, end):
-                password_hash = self.hash_password(password)
+                password_hash = self.hash_password(password,current_hash)
                 if password_hash == current_hash:
                     print ("LINE #: {}, PASSWORD: {}".format(index, password))
                     return password
@@ -262,6 +262,7 @@ else:
                 exit(1)
         else:
             print ("Invalid Flags! Please type ./hashcrack -h for usage information")
+
 
     app = HashCrack(password_length=password_length,hash_file=hash_file,hash_type=hash_type,char_set=char_set)
 
