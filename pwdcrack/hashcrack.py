@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+from time import time 
 from multiprocessing import Pool
 from multiprocessing import cpu_count
 from multiprocessing import current_process
@@ -10,7 +11,6 @@ import re
 import string
 import signal
 
-#TODO Reduce dependencies 
 
 
 class HashCrack:
@@ -37,20 +37,20 @@ class HashCrack:
                 yield self.char_set[i]
 
     def hash_password(self,password):
-        # How to emulate switch statements in Python
         
-        hash_types = {
-                "md5": hashlib.md5(bytes(password, "utf-8")).hexdigest(),
-                "ntlm": hashlib.new('md4', password.encode('utf-16le')).hexdigest(),
-                "sha1": hashlib.sha1(bytes(password, "utf-8")).hexdigest(),
-                "sha256" : hashlib.sha256(bytes(password, "utf-8")).hexdigest(),
-                "sha512": hashlib.sha512(bytes(password, "utf-8")).hexdigest()
-                }
-        try:
-            return hash_types[self.hash_type]
-        except:
-            print ("Invalid hash type! Valid hash types: md5, ntlm, sha1, sha256, sha512")
-            exit(1)
+                if self.hash_type == "md5": 
+                    return hashlib.md5(bytes(password, "utf-8")).hexdigest()
+                elif self.hash_type == "ntlm": 
+                    return hashlib.new('md4', password.encode('utf-16le')).hexdigest()
+                elif self.hash_type == "sha1": 
+                    return hashlib.sha1(bytes(password, "utf-8")).hexdigest()
+                elif self.hash_type == "sha256" : 
+                    return hashlib.sha256(bytes(password, "utf-8")).hexdigest()
+                elif self.hash_type == "sha512": 
+                    return hashlib.sha512(bytes(password, "utf-8")).hexdigest()
+                else:
+                    print ("Invalid hash type! Please see ./hashcrack -h for available hash types")
+                    exit(1)
 
     def search_passwords(self,start,end):
         for password in self.password_generator(start, end):
