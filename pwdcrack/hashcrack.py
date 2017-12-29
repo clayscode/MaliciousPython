@@ -10,7 +10,7 @@ import hashlib
 import re
 import string
 import signal
-
+import argparse
 
 
 class HashCrack:
@@ -196,6 +196,9 @@ class HashCrack:
     #TODO Allow caching of hashes in sqlite database
     def store_hashes():
         pass
+
+
+#TODO Replace this with argparse
 
 if sys.argv[1] == "-b":
     app = HashCrack(password_length=4)
