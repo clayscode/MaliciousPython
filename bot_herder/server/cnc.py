@@ -1,13 +1,21 @@
 from flask import Flask
+from flask import jsonify
+
+app = Flask(__name__)
 
 
-class CnCServer:
+commands = [
+        { 'id':'0',
+          'command':u'http-dos 127.0.0.1:80',
+          'end_cond':u'inf',
+        }
+        ]
 
-    def __init__():
-        pass
+@app.route('/commands', methods=['GET'])
+def get_commands():
+    return jsonify({'commands': commands})
 
-    def __main()__:
-        pass
+app.run(host='127.0.0.1')
 
-app = CnCServer()
-app.run()
+
+
