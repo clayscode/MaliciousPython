@@ -36,9 +36,8 @@ class BotInstance:
             worker.start()
         while True:
             if self.prev_commands != self.commands:
-                for i in range(8):
-                    for commands in self.commands:
-                        queue.put(commands)
+                for commands in self.commands:
+                    queue.put(commands)
                         
                 self.prev_commands = self.commands
 
