@@ -56,13 +56,10 @@ class RainbowTable:
 
         return curr_password
 
-    def check_hash(self, hash_value):
+    def crack_hash(self, hash_value):
         """
-        Checks to see if hash is present in the rainbow table.
-
-        Returns:
-            if present -- (seed, iters)
-            if not present -- None
+        Crack a hash.  Returns password if contained in rainbow table.
+        Returns none otherwise.
         """
         for iters in range(self.chain_length):
             curr_hash = hash_value
@@ -70,21 +67,12 @@ class RainbowTable:
                 curr_password = self.reduce_func(curr_hash, iters + i)
                 curr_hash = self.hash_func(curr_password)
             # Check to see if current password is the terminal of a chain
-            # TODO remove diagnostic print
-            print(f"check_hash says {curr_password}")
             if curr_password in self._chains:
-                return self._chains[curr_password].seed, iters
-
-    def crack_hash(self, hash_value):
-        """
-        Crack a hash.  Returns password if contained in rainbow table.
-        Returns none otherwise.
-        """
-        ret_value = self.check_hash(hash_value)
-        if ret_value == None:
-            return None
-        seed, iters = ret_value
-        return(self.retrieve_password(seed, iters))
+                # If it is verfiy that we have the correct password
+                seed = self._chains[curr_password].seed
+                password = self.retireve_password(seed, iters)
+                if self.hash_func(password) == hash_value:
+                    return password
 
 # Length of alphanumeric string in password search space
 N_CHAR = 2
