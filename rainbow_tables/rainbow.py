@@ -47,7 +47,10 @@ class RainbowTable:
             curr_password = self.reduce_func(self.hash_func(curr_password), i)
 
         chain = self.Chain(seed, self.chain_length)
-        self._chains[curr_password] = chain
+        if not curr_password in self._chains:
+            self._chains[curr_password] = [chain]
+        else:
+            self._chains[curr_password].append(chain)
 
     def generate_table(self, seeds):
         """
@@ -81,12 +84,12 @@ class RainbowTable:
                 curr_hash = self.hash_func(curr_password)
             # Check to see if current password is the terminal of a chain
             if curr_password in self._chains:
-                # If it is verfiy that we have the correct password
-                print(curr_password)
-                seed = self._chains[curr_password].seed
-                password = self.retrieve_password(seed, iters)
-                if self.hash_func(password) == hash_value:
-                    return password
+                # Identify correct chain and verify hash
+                for chain in self._chains[curr_password]:
+                    seed = chain.seed
+                    password = self.retrieve_password(seed, iters)
+                    if self.hash_func(password) == hash_value:
+                        return password
 
 
 class SimpleStringRainbowTable(RainbowTable):
@@ -134,23 +137,23 @@ ALPHA = ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWYZ0123456789"
          "!@#$%^&*()_+<>,./;:'\"")
 
 def main():
-    fname = "table3.pickle"
+    fname = "table6.pickle"
     if not os.path.exists(fname):
         print("main says generating table")
         start_time = time()
-        table = SimpleStringRainbowTable(ALPHA, N_CHARS, lambda x: sha256(bytes(x, 'utf-8')).digest(), 1000, 30)
+        table = SimpleStringRainbowTable(ALPHA, N_CHARS, lambda x: sha256(bytes(x, 'utf-8')).digest(), 1000, 1000000)
         table.generate_table()
         print(f"main says table generated in {time() - start_time} secs")
         f = open(fname, "wb")
         pickle.dump(table, f)
         f.close()
     else:
+        print("main says loading table from file")
         f = open(fname, "rb")
         table = pickle.load(f)
         f.close()
     print("main says cracking hashes")
-    test_strings = ["abJl", "DeZZ", "fH__", "k!**", "_\"ab", "aaaa"]
-    pdb.set_trace()
+    test_strings = ["abJl", "DeZZ", "fH__", "k!**", "_\"ab", "aaaa", "edTT", "l679", "fTTe", "rKlS"]
     for string in test_strings:
         start_time = time()
         print(table.crack_hash(sha256(bytes(string, "utf-8")).digest()))
