@@ -21,14 +21,14 @@ class HashCrack:
         self.process_count = cpu_count()
         self.hash_type = hash_type
         self.char_set = char_set
-        
+
     def password_generator(self,start,end,):
         '''
         itertools.product takes whatever the first character set is and prints all the possible combinations
          with the character sets that follow.
          i.e. product('a', 'bcd', 'efg') will produce ('a','b','e'), ('a','b','f') and so on
          '''
-        params = [self.char_set]* (self.password_length - 1) 
+        params = [self.char_set] * (self.password_length - 1)
         for i in range(start,end):
             if self.password_length > 1:
                 for j in product(self.char_set[i],*params):
@@ -37,7 +37,6 @@ class HashCrack:
                 yield self.char_set[i]
 
     def hash_password(self,password, current_hash):
-        
                 if self.hash_type == "md5" or len(current_hash) == 32: 
                     return hashlib.md5(bytes(password, "utf-8")).hexdigest()
                 elif self.hash_type == "ntlm": 
@@ -72,7 +71,6 @@ class HashCrack:
         # so we start with passwords of length 1
         if self.password_length == 0:
             self.password_length = 1
-            
 
             #TODO Clean this up
             flag = True
@@ -86,7 +84,6 @@ class HashCrack:
                         flag = False
                         self.password_length = 0
                         return password
-                        
                 if flag != False:
                     self.password_length += 1
 
@@ -117,7 +114,6 @@ class HashCrack:
 
             print ("Killing threads")
             exit(1)
-        
 
         print("Single-threading done in {} s".format(time() - start_time))
 
