@@ -40,6 +40,8 @@ class RainbowTable:
         curr_password = seed
         for i in range(self.chain_length):
             curr_password = self.reduce_func(self.hash_func(curr_password), i)
+            #TODO remove diagnostic print
+            print(sha256(bytes(curr_password, "utf-8")).hexdigest())
 
         chain = self.Chain(seed, self.chain_length)
         self._chains[curr_password] = chain
@@ -50,7 +52,7 @@ class RainbowTable:
         """
         curr_password = seed
         for i in range(iters):
-            curr_password = reduce_func(hash_func(curr_password), i)
+            curr_password = self.reduce_func(self.hash_func(curr_password), i)
 
         return curr_password
 
@@ -65,11 +67,24 @@ class RainbowTable:
         for iters in range(self.chain_length):
             curr_hash = hash_value
             for i in range(self.chain_length - iters):
-                curr_password = self.reduce_func(curr_hash, i)
+                curr_password = self.reduce_func(curr_hash, iters + i)
                 curr_hash = self.hash_func(curr_password)
             # Check to see if current password is the terminal of a chain
-            if curr_password in self.chains:
-                return self.chains[curr_password].seed, iters
+            # TODO remove diagnostic print
+            print(f"check_hash says {curr_password}")
+            if curr_password in self._chains:
+                return self._chains[curr_password].seed, iters
+
+    def crack_hash(self, hash_value):
+        """
+        Crack a hash.  Returns password if contained in rainbow table.
+        Returns none otherwise.
+        """
+        ret_value = self.check_hash(hash_value)
+        if ret_value == None:
+            return None
+        seed, iters = ret_value
+        return(self.retrieve_password(seed, iters))
 
 # Length of alphanumeric string in password search space
 N_CHAR = 2
@@ -99,6 +114,13 @@ def main():
     table = RainbowTable(reduce_basic, lambda x: sha256(bytes(x, "ascii")).digest(), chain_length=20)
     table.add_chain("ab")
     print(table._chains)
+
+    # Print out each value in chain
+    for i in range(table.chain_length):
+        print(table.retrieve_password(list(table._chains.values())[0].seed, i))
+
+    # Crack hash
+    print(table.crack_hash(bytes.fromhex("2da09e1fac71f1257e0efcb158f2d71e7d11ccb7a7db83461ce7f4cade83e770")))
 
 if __name__ == "__main__":
     main()
