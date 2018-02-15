@@ -3,12 +3,6 @@
 # Demo Implementation of Rainbow Tables
 # Created by William Edwards, 2018-02-01
 
-# Length of alphanumeric string in password search space
-N_CHAR = 2
-
-# Alphabet of Characters for Password Hashing
-ALPHA = ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWYZ0123456789"
-         "!@#$%^&*()_+<>,./;:'\"")
 
 from hashlib import sha256
 from collections import namedtuple
@@ -47,8 +41,8 @@ class RainbowTable:
         for i in range(self.chain_length):
             curr_password = self.reduce_func(self.hash_func(curr_password), i)
 
-        chain = Chain(seed, length)
-        self._chains[curr_passwd] = chain
+        chain = self.Chain(seed, self.chain_length)
+        self._chains[curr_password] = chain
 
     def retrieve_password(self, seed, iters):
         """
@@ -77,12 +71,19 @@ class RainbowTable:
             if curr_password in self.chains:
                 return self.chains[curr_password].seed, iters
 
-def reduce(hash_string):
+# Length of alphanumeric string in password search space
+N_CHAR = 2
+
+# Alphabet of Characters for Password Hashing
+ALPHA = ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWYZ0123456789"
+         "!@#$%^&*()_+<>,./;:'\"")
+
+def reduce_basic(hash_string, iteration):
     """
     Accepts hash in bytes form.  Converts to N_CHAR string.
     """
     # Convert hash string
-    hash_int = int.from_bytes(hash_string, "little")
+    hash_int = int.from_bytes(hash_string, "little") + iteration
 
     # Take it modulo the password search space
     search_space_size = len(ALPHA) ** N_CHAR
@@ -94,19 +95,10 @@ def reduce(hash_string):
 
     return string
 
-def compute_chain(seed, hash_func, reduce_func, length):
-    """
-    Returns a string corresponding to the last value in the hash chain.
-    """
-    curr_password = seed
-    for i in range(length):
-        curr_password = reduce_func(hash_func(curr_password))
-
-    return curr_password
-
 def main():
-    seed = "lk"
-    print(compute_chain(seed, lambda x: sha256(bytes(x, "utf-8")).digest(), reduce, 1000))
+    table = RainbowTable(reduce_basic, lambda x: sha256(bytes(x, "ascii")).digest(), chain_length=20)
+    table.add_chain("ab")
+    print(table._chains)
 
 if __name__ == "__main__":
     main()
