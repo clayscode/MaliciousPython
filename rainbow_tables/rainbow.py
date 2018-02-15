@@ -40,8 +40,6 @@ class RainbowTable:
         curr_password = seed
         for i in range(self.chain_length):
             curr_password = self.reduce_func(self.hash_func(curr_password), i)
-            #TODO remove diagnostic print
-            print(sha256(bytes(curr_password, "utf-8")).hexdigest())
 
         chain = self.Chain(seed, self.chain_length)
         self._chains[curr_password] = chain
@@ -70,7 +68,7 @@ class RainbowTable:
             if curr_password in self._chains:
                 # If it is verfiy that we have the correct password
                 seed = self._chains[curr_password].seed
-                password = self.retireve_password(seed, iters)
+                password = self.retrieve_password(seed, iters)
                 if self.hash_func(password) == hash_value:
                     return password
 
@@ -101,11 +99,6 @@ def reduce_basic(hash_string, iteration):
 def main():
     table = RainbowTable(reduce_basic, lambda x: sha256(bytes(x, "ascii")).digest(), chain_length=20)
     table.add_chain("ab")
-    print(table._chains)
-
-    # Print out each value in chain
-    for i in range(table.chain_length):
-        print(table.retrieve_password(list(table._chains.values())[0].seed, i))
 
     # Crack hash
     print(table.crack_hash(bytes.fromhex("2da09e1fac71f1257e0efcb158f2d71e7d11ccb7a7db83461ce7f4cade83e770")))
