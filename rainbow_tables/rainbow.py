@@ -42,6 +42,7 @@ class RainbowTable:
         """
         Adds a chain to the table based on an initial seed and the chain length
         """
+        # PRESENT
         curr_password = seed
         for i in range(self.chain_length):
             curr_password = self.reduce_func(self.hash_func(curr_password), i)
@@ -77,6 +78,7 @@ class RainbowTable:
         Crack a hash.  Returns password if contained in rainbow table.
         Returns none otherwise.
         """
+        # PRESENT
         for iters in range(self.chain_length):
             curr_hash = hash_value
             for i in range(self.chain_length - iters):
@@ -103,6 +105,7 @@ class SimpleStringRainbowTable(RainbowTable):
         """
         Accepts hash in bytes form.  Converts to N_CHAR string.
         """
+        # PRESENT
         # Convert hash string
         hash_int = int.from_bytes(hash_string, "little") + iteration
 
@@ -153,7 +156,7 @@ def main():
         table = pickle.load(f)
         f.close()
     print("main says cracking hashes")
-    test_strings = ["abJl", "DeZZ", "fH__", "k!**", "_\"ab", "aaaa", "edTT", "l679", "fTTe", "rKlS"]
+    test_strings = ["blar", "abJl", "DeZZ", "fH__", "k!**", "_\"ab", "aaaa", "edTT", "l679", "fTTe", "rKlS"]
     for string in test_strings:
         start_time = time()
         print(table.crack_hash(sha256(bytes(string, "utf-8")).digest()))
