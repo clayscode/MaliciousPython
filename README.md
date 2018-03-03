@@ -16,7 +16,7 @@
 
 - reverse\_eng:
 
--rainbow_tables:
+- rainbow_tables:
     - rainbow.py - A rainbow table using Python and Pickle
 
 
