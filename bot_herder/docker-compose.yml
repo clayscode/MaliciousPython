@@ -1,0 +1,29 @@
+version: '3'
+services:
+    bot_server:
+        container_name: bot_server
+        build: 
+            context: ./
+            dockerfile: ./server/Dockerfile
+        expose:
+            - "3000"
+            - "15000-16000"
+
+    nginx:
+        container_name: bot_nginx
+        build:
+            context: ./
+            dockerfile: ./nginx/Dockerfile
+        ports:
+            - "127.0.0.1:80:80"
+        depends_on:
+            - bot_server 
+
+
+    bot_client_1: 
+        container_name: bot_client_1
+        build:
+            context: ./
+            dockerfile: ./client/Dockerfile
+        depends_on:
+            - nginx

